@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="espace_vendeur.css">
+    <title>Espace Vendeur</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <style>
+        /* COMPTEUR */
+        #compteur_abonnement {
+            display: none;
+            background: linear-gradient(to right, #1a1a1a, #8b2d00);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        #compteur_abonnement .label { font-size: 13px; opacity: 0.8; margin-bottom: 6px; }
+        #compteur_abonnement .temps { font-size: 22px; font-weight: bold; letter-spacing: 1px; }
+        #compteur_abonnement.expire { background: linear-gradient(to right, #cc0000, #8b0000); }
+        #compteur_abonnement .barre-fond {
+            background: rgba(255,255,255,0.2); border-radius: 10px;
+            height: 6px; margin-top: 10px; overflow: hidden;
+        }
+        #compteur_abonnement .barre-remplie {
+            background: #ff5e00; height: 100%; border-radius: 10px; transition: width 1s;
+        }
+
+        /* ÉTAPES INSCRIPTION */
+        .etapes {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            margin-bottom: 30px;
+        }
+        .etape {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #bbb;
+        }
+        .etape .num {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: #ddd;
+            color: #999;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: bold;
+        }
+        .etape.actif .num { background: #8b2d00; color: white; }
+        .etape.actif { color: #8b2d00; }
+        .etape.fait .num { background: #007a2f; color: white; }
+        .etape.fait { color: #007a2f; }
+        .separateur-etape {
+            width: 40px; height: 2px;
+            background: #ddd; margin: 0 4px; align-self: center;
+        }
+        .separateur-etape.fait { background: #007a2f; }
+
+        /* BLOC ÉTAPE */
+        .bloc-etape { display: none; }
+        .bloc-etape.actif { display: block; }
+
+        /* PAGE PLEIN ÉCRAN : pas de header/footer, le conteneur prend toute la page */
+        html, body { height: 100%; margin: 0; }
+        main { padding: 0; }
+        .auth-section {
+            max-width: none;
+            width: 100%;
+            min-height: 100vh;
+            margin: 0;
+            border-radius: 0;
+            box-shadow: none;
+        }
+        @media (max-width: 900px) {
+            .auth-section { min-height: auto; }
+        }
+
+        /* FLÈCHE RETOUR (en haut à gauche) */
+        .retour-arriere {
+            position: fixed;
+            top: 18px;
+            left: 18px;
+            z-index: 100;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.55);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .retour-arriere:hover { background: rgba(0,0,0,0.8); }
+
+        /* ═══════════════════════════════════════
+           ESPACE VENDEUR (après connexion)
+        ═══════════════════════════════════════ */
+        #dashboard_vendeur {
+            display: none;
+            max-width: 1000px;
+            margin: 70px auto 40px;
+            padding: 0 20px 60px;
+        }
+
+        .profil-entete {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+        }
+
+        .profil-photo-zone { position: relative; width: 90px; height: 90px; flex-shrink: 0; }
+
+        .profil-photo-cercle {
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            border: 3px solid #ff5e00;
+            background-color: #8b2d00;
+            background-size: cover;
+            background-position: center;
+            color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px; font-weight: bold;
+        }
+
+        .profil-photo-btn {
+            position: absolute; bottom: -2px; right: -2px;
+            width: 30px; height: 30px; border-radius: 50%;
+            background: #ff5e00; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; cursor: pointer; border: 2px solid white;
+        }
+
+        .profil-infos h2 { margin: 0 0 4px; color: #222; font-size: 20px; }
+        .profil-infos p  { margin: 0; color: #777; font-size: 14px; }
+
+        .profil-actions { margin-left: auto; }
+        .profil-actions button {
+            background: #555; color: white; border: none; padding: 10px 18px;
+            border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold;
+        }
+        .profil-actions button:hover { background: #333; }
+
+        .dash-onglets { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .dash-onglet {
+            background: white; border: 2px solid transparent; padding: 10px 20px;
+            border-radius: 10px; cursor: pointer; font-weight: bold; color: #777;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06); font-size: 14px;
+        }
+        .dash-onglet.actif { border-color: #ff5e00; color: #8b2d00; }
+
+        .dash-panneau { display: none; background: white; border-radius: 16px;
+            padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        .dash-panneau.actif { display: block; }
+
+        .grille-mes-articles {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 14px;
+            margin-top: 15px;
+        }
+        .mini-carte-article { background: #faf9f8; border-radius: 10px; overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .mini-carte-article img, .mini-carte-article .no-photo {
+            width: 100%; height: 100px; object-fit: cover; background: #eee;
+            display: flex; align-items: center; justify-content: center; font-size: 26px;
+        }
+        .mini-carte-article .info { padding: 8px; }
+        .mini-carte-article .nom {
+            font-size: 13px; font-weight: bold; color: #222;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .mini-carte-article .prix { font-size: 13px; color: #8b2d00; font-weight: bold; margin-top: 3px; }
+        .mini-carte-article .date { font-size: 10px; color: #999; margin-top: 3px; }
+        .aucun-mes-articles { text-align: center; color: #888; padding: 30px; grid-column: 1/-1; }
+    </style>
+</head>
+
+<body>
+
+    <a href="index.html" class="retour-arriere" onclick="if (window.history.length > 1) { history.back(); return false; }" aria-label="Retour">←</a>
+
+    <main>
+
+        <!-- ═══════════════════════════════ -->
+        <!-- CONNEXION                       -->
+        <!-- ═══════════════════════════════ -->
+        <div class="auth-section auth-connexion">
+
+            <div class="auth-visuel">
+                <div class="auth-visuel-contenu">
+                    <div class="auth-logo-badge">
+                        <img src="logo.png" alt="ESETEC Marketplace">
+                    </div>
+                    <h1 class="auth-titre-marque">ESETEC<br><span>Marketplace</span></h1>
+                    <p class="auth-slogan">« Achetez. Vendez. Échangez. »</p>
+                    <p class="auth-desc">
+                        La marketplace pensée pour les étudiants d'ESETEC. Découvrez des
+                        articles, publiez vos produits et échangez facilement avec les
+                        autres étudiants.
+                    </p>
+                    <div class="auth-badges">
+                        <span class="auth-badge">Achetez</span>
+                        <span class="auth-badge"> Vendez</span>
+                        <span class="auth-badge"> Échangez</span>
+                    </div>
+                </div>
+            </div>
+
+            <section id="connexion" class="auth-carte">
+                <span class="auth-icone-badge">✦</span>
+                <h2>Se connecter</h2>
+                <p class="auth-souscription">Heureux de vous revoir ! Connectez-vous à votre compte ESETEC Marketplace.</p>
+                <div class="auth-separateur"><span>✦</span></div>
+
+                <p id="message_erreur" style="display:none;
+                background:#ffe0e0; color:#cc0000; padding:12px 16px;
+                border-radius:8px; margin-bottom:15px; font-weight:bold;
+                border-left:4px solid #cc0000;">
+                ❌ Email ou mot de passe incorrect.
+            </p>
+            <p id="msg_attente" style="display:none;
+                background:#fff8e1; color:#8b6000; padding:14px 16px;
+                border-radius:8px; margin-bottom:15px; font-weight:bold;
+                border-left:4px solid #f9a825;">
+                ⏳ Votre compte est en attente de validation par l'administrateur.
+            </p>
+            <p id="msg_refuse" style="display:none;
+                background:#ffe0e0; color:#cc0000; padding:14px 16px;
+                border-radius:8px; margin-bottom:15px; font-weight:bold;
+                border-left:4px solid #cc0000;">
+                ❌ Votre demande a été refusée. Contactez l'administrateur.
+            </p>
+            <p id="msg_expire" style="display:none;
+                background:#ffe0e0; color:#cc0000; padding:14px 16px;
+                border-radius:8px; margin-bottom:15px; font-weight:bold;
+                border-left:4px solid #cc0000;">
+                ⌛ Votre abonnement a expiré. Contactez l'administrateur pour renouveler.
+            </p>
+            <form id="form_connexion">
+                <label>Email</label>
+                <input type="email" id="input_email" placeholder="votre@email.com">
+                <label>Mot de passe</label>
+                <input type="password" id="input_mdp" placeholder="••••••••">
+                <p style="text-align:right; margin:8px 0 0;">
+                    <a href="#" onclick="afficherReinitMdp(); return false;" style="color:#ff5e00; font-size:13px; font-weight:bold; text-decoration:none;">
+                        Mot de passe oublié ?
+                    </a>
+                </p>
+                <button type="button" id="btn_connexion" onclick="connecter()">Se connecter</button>
+            </form>
+
+            <!-- ── RÉINITIALISATION DU MOT DE PASSE ── -->
+            <div id="bloc_reinit_mdp" style="display:none;">
+                <p style="font-size:13px; color:#666; margin-bottom:15px; line-height:1.6;">
+                    Entrez l'email et le numéro WhatsApp utilisés à l'inscription pour définir un nouveau mot de passe.
+                </p>
+                <p id="msg_reinit_err" style="display:none;
+                    background:#ffe0e0; color:#cc0000; padding:12px 16px;
+                    border-radius:8px; margin-bottom:15px; font-weight:bold;
+                    border-left:4px solid #cc0000;"></p>
+                <p id="msg_reinit_ok" style="display:none;
+                    background:#e0ffe8; color:#007a2f; padding:12px 16px;
+                    border-radius:8px; margin-bottom:15px; font-weight:bold;
+                    border-left:4px solid #007a2f;">
+                    ✅ Mot de passe mis à jour ! Vous pouvez maintenant vous connecter.
+                </p>
+                <form id="form_reinit">
+                    <label>Email</label>
+                    <input type="email" id="reinit_email" placeholder="votre@email.com">
+                    <label>Numéro WhatsApp</label>
+                    <input type="tel" id="reinit_whatsapp" placeholder="+225 07 XX XX XX XX">
+                    <label>Nouveau mot de passe</label>
+                    <input type="password" id="reinit_mdp" placeholder="Minimum 6 caractères">
+                    <label>Confirmer le nouveau mot de passe</label>
+                    <input type="password" id="reinit_mdp2" placeholder="Répétez le mot de passe">
+                    <button type="button" id="btn_reinit" onclick="reinitialiserMdp()">Réinitialiser le mot de passe</button>
+                </form>
+                <p style="text-align:center; margin-top:15px; font-size:14px;">
+                    <a href="#" onclick="masquerReinitMdp(); return false;" style="color:#ff5e00; font-weight:bold; text-decoration:none;">
+                        ← Retour à la connexion
+                    </a>
+                </p>
+            </div>
+
+            <p id="lien_inscription" style="text-align:center; margin-top:15px; font-size:14px; color:#666;">
+                Pas encore de compte ?
+                <a href="espace_vendeur_inscription.html" style="color:#8b2d00; font-weight:bold;">S'inscrire ici</a>
+            </p>
+
+        </section>
+
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- ESPACE VENDEUR (affiché après connexion)        -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <section id="dashboard_vendeur">
+
+            <div class="profil-entete">
+                <div class="profil-photo-zone">
+                    <div class="profil-photo-cercle" id="profil_photo">?</div>
+                    <label for="profil_photo_input" class="profil-photo-btn" title="Changer la photo">📷</label>
+                    <input type="file" id="profil_photo_input" accept="image/*" style="display:none;" onchange="changerPhotoProfil(this)">
+                </div>
+                <div class="profil-infos">
+                    <h2 id="profil_nom">—</h2>
+                    <p id="profil_email">—</p>
+                </div>
+                <div class="profil-actions">
+                    <button type="button" id="btn_deconnexion" onclick="deconnecter()"> Se déconnecter</button>
+                </div>
+            </div>
+
+            <!-- COMPTEUR ABONNEMENT -->
+            <section id="section_compteur" style="display:none; margin-bottom:25px;">
+                <div id="compteur_abonnement">
+                    <div class="label">⏱️ Temps restant sur votre abonnement</div>
+                    <div class="temps" id="temps_restant">--</div>
+                    <div class="barre-fond">
+                        <div class="barre-remplie" id="barre_progression" style="width:100%;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="dash-onglets">
+                <button type="button" class="dash-onglet actif" id="btn_onglet_articles" onclick="basculerOngletDash('articles')"> Mes articles</button>
+                <button type="button" class="dash-onglet" id="btn_onglet_ajouter" onclick="basculerOngletDash('ajouter')"> Ajouter un article</button>
+            </div>
+
+            <!-- ── MES ARTICLES ── -->
+            <section id="panneau_mes_articles" class="dash-panneau actif">
+                <h2>Mes articles publiés</h2>
+                <div class="grille-mes-articles" id="grille_mes_articles">
+                    <p class="aucun-mes-articles">⏳ Chargement...</p>
+                </div>
+            </section>
+
+            <!-- ── AJOUTER UN ARTICLE ── -->
+            <section id="ajouter_article" class="dash-panneau">
+                <h2>Ajouter un article</h2>
+                <p id="msg_article_ok" style="display:none;
+                    background:#e0ffe8; color:#007a2f; padding:12px 16px;
+                    border-radius:8px; margin-bottom:15px; font-weight:bold;
+                    border-left:4px solid #007a2f;">
+                    ✅ Article publié avec succès ! Visible dans l'espace client.
+                </p>
+                <p id="msg_article_err" style="display:none;
+                    background:#ffe0e0; color:#cc0000; padding:12px 16px;
+                    border-radius:8px; margin-bottom:15px; font-weight:bold;
+                    border-left:4px solid #cc0000;">
+                    ❌ Erreur lors de la publication. Vérifiez votre connexion.
+                </p>
+
+                <form id="form_article">
+                    <label>Photos de l'article (plusieurs possibles)</label>
+                    <input type="file" id="photo_article" accept="image/*" multiple onchange="gererSelectionPhotos(event)">
+                    <p style="font-size:12.5px; color:#8a7d73; margin-top:6px;">
+                        La 1ʳᵉ photo (avec l'étoile ) est celle affichée sur le site. Cliquez sur une autre photo pour la mettre en avant.
+                    </p>
+                    <div id="apercu_photos" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;"></div>
+                    <label>Nom de l'article *</label>
+                    <input type="text" id="nom_article" placeholder="Ex: iPhone 13 Pro">
+                    <label>Description *</label>
+                    <textarea id="desc_article" placeholder="Décrivez votre article..."></textarea>
+                    <label>Prix (FCFA) *</label>
+                    <input type="number" id="prix_article" placeholder="Ex: 150000">
+                    <label>Numéro WhatsApp *</label>
+                    <input type="tel" id="whatsapp_article" placeholder="+225 07 XX XX XX XX">
+                    <label>Catégorie</label>
+                    <select id="categorie_article">
+                        <option value="Autre">Autre</option>
+                        <option value="Vêtements">Vêtements</option>
+                        <option value="Accessoires">Accessoires</option>
+                        <option value="Informatique">Informatique</option>
+                        <option value="Fournitures">Fournitures scolaires</option>
+                        <option value="Alimentation">Alimentation</option>
+                        <option value="Électronique">Électronique</option>
+                    </select>
+                    <button type="button" id="btn_publier" onclick="publierArticle()">
+                         Publier l'article
+                    </button>
+                </form>
+            </section>
+
+        </section>
+
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getDatabase, ref, push, set, update, get, query, orderByChild, equalTo }
+            from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD0AD4E1t_YuQLHOgsEOy_wQKZ4l9ycrMo",
+            authDomain: "esetec-marketplace.firebaseapp.com",
+            projectId: "esetec-marketplace",
+            storageBucket: "esetec-marketplace.firebasestorage.app",
+            messagingSenderId: "480104714016",
+            appId: "1:480104714016:web:c8b923f80c103701385145",
+            databaseURL: "https://esetec-marketplace-default-rtdb.firebaseio.com"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db  = getDatabase(app);
+
+        // Clé utilisée pour garder la session ouverte d'une page à l'autre
+        // et faire apparaître "Mon compte" dans la barre de navigation du site.
+        const CLE_SESSION_VENDEUR = "esetec_vendeur_id";
+
+        const DUREE_ABONNEMENT = 30 * 24 * 60 * 60 * 1000;
+        var vendeurConnecte   = null;
+        var idVendeurConnecte = null;
+        var intervalCompteur  = null;
+
+        // ══════════════════════════════════════
+        // RECHERCHE D'UN VENDEUR PAR EMAIL (fiable même si la casse
+        // ou des espaces diffèrent entre ce qui a été saisi et ce qui
+        // est enregistré dans la base)
+        // ══════════════════════════════════════
+        async function trouverVendeurParEmail(email) {
+            var cible = (email || "").trim().toLowerCase();
+            var snap  = await get(ref(db, "vendeurs"));
+            var resultat = null;
+            if (snap.exists()) {
+                snap.forEach(function(e) {
+                    var v = e.val();
+                    if ((v.email || "").trim().toLowerCase() === cible) {
+                        resultat = { id: e.key, data: v };
+                    }
+                });
+            }
+            return resultat;
+        }
+
+        // ══════════════════════════════════════
+        // CONNEXION
+        // ══════════════════════════════════════
+        window.connecter = async function() {
+            var email = document.getElementById("input_email").value.trim().toLowerCase();
+            var mdp   = document.getElementById("input_mdp").value;
+
+            ["message_erreur","msg_attente","msg_refuse","msg_expire"].forEach(function(id) {
+                document.getElementById(id).style.display = "none";
+            });
+
+            if (!email || !mdp) {
+                document.getElementById("message_erreur").style.display = "block"; return;
+            }
+
+            var btn = document.getElementById("btn_connexion");
+            btn.textContent = "⏳ Connexion..."; btn.disabled = true;
+
+            try {
+                var trouve = await trouverVendeurParEmail(email);
+                if (!trouve) {
+                    document.getElementById("message_erreur").style.display = "block";
+                    btn.textContent = "Se connecter"; btn.disabled = false; return;
+                }
+
+                var vendeurData = trouve.data;
+
+                if (vendeurData.mdp !== mdp) {
+                    document.getElementById("message_erreur").style.display = "block";
+                    btn.textContent = "Se connecter"; btn.disabled = false; return;
+                }
+                if (vendeurData.statut === "en_attente") {
+                    document.getElementById("msg_attente").style.display = "block";
+                    btn.textContent = "Se connecter"; btn.disabled = false; return;
+                }
+                if (vendeurData.statut === "refuse") {
+                    document.getElementById("msg_refuse").style.display = "block";
+                    btn.textContent = "Se connecter"; btn.disabled = false; return;
+                }
+                if (vendeurData.statut === "actif") {
+                    if (vendeurData.dateExpiration && Date.now() > vendeurData.dateExpiration) {
+                        document.getElementById("msg_expire").style.display = "block";
+                        btn.textContent = "Se connecter"; btn.disabled = false; return;
+                    }
+
+                    // ✅ Connexion réussie
+                    ouvrirEspaceVendeur(vendeurData, trouve.id, true);
+                }
+            } catch(err) {
+                document.getElementById("message_erreur").style.display = "block"; console.error(err);
+            }
+            btn.textContent = "Se connecter"; btn.disabled = false;
+        };
+
+        // ══════════════════════════════════════
+        // AFFICHER L'ESPACE VENDEUR (après connexion,
+        // ou après restauration automatique de la session)
+        // ══════════════════════════════════════
+        function ouvrirEspaceVendeur(vendeurData, id, memoriserSession) {
+            vendeurConnecte   = vendeurData;
+            idVendeurConnecte = id;
+
+            // Cacher la connexion, afficher l'espace vendeur
+            document.querySelector(".auth-connexion").style.display = "none";
+            document.getElementById("dashboard_vendeur").style.display = "block";
+
+            // Remplir le profil
+            document.getElementById("profil_nom").textContent   = vendeurData.nom;
+            document.getElementById("profil_email").textContent = vendeurData.email;
+            afficherPhotoProfil(vendeurData.photo, vendeurData.nom);
+
+            // Revenir sur l'onglet "Mes articles" par défaut
+            basculerOngletDash("articles");
+
+            // Charger les articles déjà publiés par ce vendeur
+            chargerMesArticles();
+
+            // Pré-remplir WhatsApp du formulaire de publication
+            document.getElementById("whatsapp_article").value = vendeurData.whatsapp || "";
+
+            // Démarrer le compteur d'abonnement
+            demarrerCompteur(vendeurData.dateExpiration);
+
+            // Garder la session ouverte : permet à "Mon compte" d'apparaître
+            // dans la barre de navigation des autres pages du site, et de
+            // revenir directement sur ce tableau de bord au prochain passage.
+            if (memoriserSession) {
+                try { localStorage.setItem(CLE_SESSION_VENDEUR, id); } catch(e) {}
+            }
+        }
+
+        // ══════════════════════════════════════
+        // RESTAURER UNE SESSION DÉJÀ OUVERTE
+        // (arrivée sur la page via "Mon compte" ou après rechargement)
+        // ══════════════════════════════════════
+        async function restaurerSessionVendeur() {
+            var id;
+            try { id = localStorage.getItem(CLE_SESSION_VENDEUR); } catch(e) { id = null; }
+            if (!id) return;
+
+            try {
+                var snap = await get(ref(db, "vendeurs/" + id));
+                if (!snap.exists()) { localStorage.removeItem(CLE_SESSION_VENDEUR); return; }
+
+                var vendeurData = snap.val();
+                if (vendeurData.statut !== "actif") {
+                    // Compte désactivé/refusé entretemps par l'admin : on efface la session.
+                    localStorage.removeItem(CLE_SESSION_VENDEUR);
+                    return;
+                }
+                ouvrirEspaceVendeur(vendeurData, id, false);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+        restaurerSessionVendeur();
+
+        // ══════════════════════════════════════
+        // MOT DE PASSE OUBLIÉ
+        // ══════════════════════════════════════
+        window.afficherReinitMdp = function() {
+            document.getElementById("form_connexion").style.display   = "none";
+            document.getElementById("lien_inscription").style.display = "none";
+            document.getElementById("bloc_reinit_mdp").style.display  = "block";
+        };
+
+        window.masquerReinitMdp = function() {
+            document.getElementById("bloc_reinit_mdp").style.display   = "none";
+            document.getElementById("form_connexion").style.display    = "flex";
+            document.getElementById("lien_inscription").style.display  = "block";
+            document.getElementById("msg_reinit_err").style.display    = "none";
+            document.getElementById("msg_reinit_ok").style.display     = "none";
+            document.getElementById("form_reinit").reset();
+        };
+
+        window.reinitialiserMdp = async function() {
+            var email     = document.getElementById("reinit_email").value.trim().toLowerCase();
+            var whatsapp  = document.getElementById("reinit_whatsapp").value.trim();
+            var mdp       = document.getElementById("reinit_mdp").value;
+            var mdp2      = document.getElementById("reinit_mdp2").value;
+            var errEl     = document.getElementById("msg_reinit_err");
+            var okEl      = document.getElementById("msg_reinit_ok");
+            errEl.style.display = "none";
+            okEl.style.display  = "none";
+
+            if (!email || !whatsapp || !mdp || !mdp2) {
+                errEl.textContent = "❌ Veuillez remplir tous les champs.";
+                errEl.style.display = "block"; return;
+            }
+            if (mdp.length < 6) {
+                errEl.textContent = "❌ Le mot de passe doit contenir au moins 6 caractères.";
+                errEl.style.display = "block"; return;
+            }
+            if (mdp !== mdp2) {
+                errEl.textContent = "❌ Les mots de passe ne correspondent pas.";
+                errEl.style.display = "block"; return;
+            }
+
+            var btn = document.getElementById("btn_reinit");
+            btn.textContent = "⏳ Vérification..."; btn.disabled = true;
+
+            try {
+                var trouve = await trouverVendeurParEmail(email);
+                if (!trouve) {
+                    errEl.textContent = "❌ Aucun compte trouvé avec cet email.";
+                    errEl.style.display = "block";
+                    btn.textContent = "Réinitialiser le mot de passe"; btn.disabled = false; return;
+                }
+
+                var idVendeur = trouve.id, vendeurData = trouve.data;
+
+                var whatsappSaisi  = whatsapp.replace(/[^0-9]/g, "");
+                var whatsappStocke = (vendeurData.whatsapp || "").replace(/[^0-9]/g, "");
+
+                if (!whatsappStocke || whatsappSaisi !== whatsappStocke) {
+                    errEl.textContent = "❌ Le numéro WhatsApp ne correspond pas à celui fourni lors de l'inscription.";
+                    errEl.style.display = "block";
+                    btn.textContent = "Réinitialiser le mot de passe"; btn.disabled = false; return;
+                }
+
+                await update(ref(db, "vendeurs/" + idVendeur), { mdp: mdp });
+                okEl.style.display = "block";
+                document.getElementById("form_reinit").reset();
+            } catch(err) {
+                errEl.textContent = "❌ Erreur technique. Réessayez.";
+                errEl.style.display = "block"; console.error(err);
+            }
+            btn.textContent = "Réinitialiser le mot de passe"; btn.disabled = false;
+        };
+
+        // ══════════════════════════════════════
+        // COMPTEUR
+        // ══════════════════════════════════════
+        function demarrerCompteur(dateExpiration) {
+            document.getElementById("section_compteur").style.display    = "block";
+            document.getElementById("compteur_abonnement").style.display = "block";
+
+            function maj() {
+                var restant     = dateExpiration - Date.now();
+                var progression = Math.max(0, restant / DUREE_ABONNEMENT * 100);
+                document.getElementById("barre_progression").style.width = progression + "%";
+
+                if (restant <= 0) {
+                    document.getElementById("temps_restant").textContent = "⌛ Abonnement expiré";
+                    document.getElementById("compteur_abonnement").classList.add("expire");
+                    document.getElementById("btn_publier").disabled = true;
+                    document.getElementById("btn_publier").textContent = "⌛ Abonnement expiré";
+                    clearInterval(intervalCompteur);
+                    return;
+                }
+                var j = Math.floor(restant / 86400000);
+                var h = Math.floor((restant % 86400000) / 3600000);
+                var m = Math.floor((restant % 3600000) / 60000);
+                var s = Math.floor((restant % 60000) / 1000);
+                document.getElementById("temps_restant").textContent = j+" j  "+h+" h  "+m+" min  "+s+" sec";
+            }
+            maj();
+            intervalCompteur = setInterval(maj, 1000);
+        }
+
+        // ══════════════════════════════════════
+        // PHOTO DE PROFIL
+        // ══════════════════════════════════════
+        function afficherPhotoProfil(photo, nom) {
+            var el = document.getElementById("profil_photo");
+            if (photo) {
+                el.style.backgroundImage = "url('" + photo + "')";
+                el.textContent = "";
+            } else {
+                el.style.backgroundImage = "none";
+                el.textContent = (nom || "?").trim().charAt(0).toUpperCase();
+            }
+        }
+
+        window.changerPhotoProfil = async function(inputEl) {
+            var fichier = inputEl.files[0];
+            if (!fichier || !idVendeurConnecte) return;
+
+            try {
+                var dataURL = await new Promise(function(resolve) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) { resolve(e.target.result); };
+                    reader.readAsDataURL(fichier);
+                });
+                await update(ref(db, "vendeurs/" + idVendeurConnecte), { photo: dataURL });
+                vendeurConnecte.photo = dataURL;
+                afficherPhotoProfil(dataURL, vendeurConnecte.nom);
+            } catch(err) {
+                alert("Erreur lors de l'envoi de la photo. Réessayez.");
+                console.error(err);
+            }
+            inputEl.value = "";
+        };
+
+        // ══════════════════════════════════════
+        // ONGLETS DE L'ESPACE VENDEUR
+        // ══════════════════════════════════════
+        window.basculerOngletDash = function(nom) {
+            document.getElementById("btn_onglet_articles").classList.toggle("actif", nom === "articles");
+            document.getElementById("btn_onglet_ajouter").classList.toggle("actif", nom === "ajouter");
+            document.getElementById("panneau_mes_articles").classList.toggle("actif", nom === "articles");
+            document.getElementById("ajouter_article").classList.toggle("actif", nom === "ajouter");
+        };
+
+        // ══════════════════════════════════════
+        // MES ARTICLES PUBLIÉS
+        // ══════════════════════════════════════
+        window.chargerMesArticles = async function() {
+            var grille = document.getElementById("grille_mes_articles");
+            grille.innerHTML = "<p class='aucun-mes-articles'>⏳ Chargement...</p>";
+
+            try {
+                var snap = await get(ref(db, "articles"));
+                var mesArticles = [];
+                var monEmail = (vendeurConnecte.email || "").trim().toLowerCase();
+
+                if (snap.exists()) {
+                    snap.forEach(function(e) {
+                        var a = e.val();
+                        if ((a.vendeurEmail || "").trim().toLowerCase() === monEmail) {
+                            a.id = e.key;
+                            mesArticles.push(a);
+                        }
+                    });
+                    mesArticles.reverse();
+                }
+
+                if (mesArticles.length === 0) {
+                    grille.innerHTML = "<p class='aucun-mes-articles'>📦 Vous n'avez encore publié aucun article.</p>";
+                    return;
+                }
+
+                grille.innerHTML = "";
+                mesArticles.forEach(function(a) {
+                    var carte = document.createElement("div");
+                    carte.className = "mini-carte-article";
+
+                    var photoPrincipale = (a.photos && a.photos[0]) || a.photo;
+                    var photoHTML = photoPrincipale
+                        ? "<img src='" + photoPrincipale + "' alt='" + a.nom + "'>"
+                        : "<div class='no-photo'>📦</div>";
+
+                    var prixFormate = a.prix
+                        ? parseInt(a.prix).toLocaleString("fr-FR") + " FCFA"
+                        : "Prix non défini";
+
+                    var dateFormatee = a.date ? new Date(a.date).toLocaleDateString("fr-FR") : "";
+
+                    carte.innerHTML =
+                        photoHTML +
+                        "<div class='info'>" +
+                        "<div class='nom'>" + a.nom + "</div>" +
+                        "<div class='prix'>" + prixFormate + "</div>" +
+                        "<div class='date'>Publié le " + dateFormatee + "</div>" +
+                        "</div>";
+
+                    grille.appendChild(carte);
+                });
+            } catch(err) {
+                grille.innerHTML = "<p class='aucun-mes-articles'>❌ Erreur de chargement.</p>";
+                console.error(err);
+            }
+        };
+
+        // ══════════════════════════════════════
+        // DÉCONNEXION
+        // ══════════════════════════════════════
+        window.deconnecter = function() {
+            vendeurConnecte   = null;
+            idVendeurConnecte = null;
+            try { localStorage.removeItem(CLE_SESSION_VENDEUR); } catch(e) {}
+            if (intervalCompteur) { clearInterval(intervalCompteur); intervalCompteur = null; }
+
+            document.querySelector(".auth-connexion").style.display = "grid";
+            document.getElementById("dashboard_vendeur").style.display = "none";
+
+            document.getElementById("bloc_reinit_mdp").style.display       = "none";
+            document.getElementById("input_email").value                   = "";
+            document.getElementById("input_mdp").value                     = "";
+            document.getElementById("message_erreur").style.display        = "none";
+            document.getElementById("msg_attente").style.display           = "none";
+            document.getElementById("msg_refuse").style.display            = "none";
+            document.getElementById("msg_expire").style.display            = "none";
+            document.getElementById("section_compteur").style.display      = "none";
+            document.getElementById("compteur_abonnement").style.display   = "none";
+            document.getElementById("compteur_abonnement").classList.remove("expire");
+            document.getElementById("grille_mes_articles").innerHTML       = "";
+            document.getElementById("form_article").reset();
+            document.getElementById("msg_article_ok").style.display        = "none";
+            document.getElementById("msg_article_err").style.display       = "none";
+            document.getElementById("btn_publier").disabled                = false;
+            document.getElementById("btn_publier").textContent             = "📦 Publier l'article";
+            basculerOngletDash("articles");
+        };
+
+        // ══════════════════════════════════════
+        // SÉLECTION / APERÇU DES PHOTOS (multi)
+        // ══════════════════════════════════════
+        var photosArticleSelectionnees = []; // tableau de dataURL, [0] = photo principale
+
+        window.gererSelectionPhotos = function(evenement) {
+            var fichiers = Array.prototype.slice.call(evenement.target.files);
+            if (fichiers.length === 0) return;
+
+            var lectures = fichiers.map(function(fichier) {
+                return new Promise(function(resolve) {
+                    var lecteur = new FileReader();
+                    lecteur.onload = function(e) { resolve(e.target.result); };
+                    lecteur.readAsDataURL(fichier);
+                });
+            });
+
+            Promise.all(lectures).then(function(dataURLs) {
+                photosArticleSelectionnees = dataURLs;
+                afficherApercuPhotos();
+            });
+        };
+
+        function afficherApercuPhotos() {
+            var conteneur = document.getElementById("apercu_photos");
+            conteneur.innerHTML = "";
+
+            photosArticleSelectionnees.forEach(function(src, index) {
+                var vignette = document.createElement("div");
+                vignette.style.cssText =
+                    "position:relative; width:78px; height:78px; border-radius:10px; overflow:hidden; cursor:pointer;" +
+                    "border:2px solid " + (index === 0 ? "#ff5e00" : "transparent") + ";";
+                vignette.title = index === 0 ? "Photo principale" : "Cliquer pour définir comme photo principale";
+                vignette.onclick = function() { definirPhotoPrincipale(index); };
+
+                vignette.innerHTML =
+                    "<img src='" + src + "' style='width:100%; height:100%; object-fit:cover; display:block;'>" +
+                    (index === 0
+                        ? "<span style='position:absolute; top:3px; left:3px; background:#ff5e00; color:white; font-size:11px; padding:1px 5px; border-radius:6px;'>⭐</span>"
+                        : "");
+
+                conteneur.appendChild(vignette);
+            });
+        }
+
+        function definirPhotoPrincipale(index) {
+            if (index === 0) return;
+            var choisie = photosArticleSelectionnees.splice(index, 1)[0];
+            photosArticleSelectionnees.unshift(choisie);
+            afficherApercuPhotos();
+        }
+
+        // ══════════════════════════════════════
+        // PUBLIER ARTICLE
+        // ══════════════════════════════════════
+        window.publierArticle = async function() {
+            if (!vendeurConnecte || (vendeurConnecte.dateExpiration && Date.now() > vendeurConnecte.dateExpiration)) {
+                document.getElementById("msg_article_err").textContent = "⌛ Votre abonnement a expiré.";
+                document.getElementById("msg_article_err").style.display = "block"; return;
+            }
+
+            var nom       = document.getElementById("nom_article").value.trim();
+            var desc      = document.getElementById("desc_article").value.trim();
+            var prix      = document.getElementById("prix_article").value.trim();
+            var whatsapp  = document.getElementById("whatsapp_article").value.trim();
+            var categorie = document.getElementById("categorie_article").value;
+
+            if (!nom || !desc || !prix || !whatsapp) {
+                alert("Veuillez remplir tous les champs obligatoires (*)."); return;
+            }
+
+            var btn = document.getElementById("btn_publier");
+            btn.textContent = "⏳ Publication..."; btn.disabled = true;
+
+            try {
+                var photos = photosArticleSelectionnees;
+                await set(push(ref(db, "articles")), {
+                    nom, description: desc, prix: parseInt(prix),
+                    whatsapp, categorie,
+                    photos:         photos,
+                    photo:          photos[0] || "",
+                    vendeur:        vendeurConnecte.nom,
+                    vendeurEmail:   vendeurConnecte.email,
+                    dateExpiration: vendeurConnecte.dateExpiration,
+                    date:           new Date().toISOString()
+                });
+                document.getElementById("msg_article_ok").style.display  = "block";
+                document.getElementById("msg_article_err").style.display = "none";
+                document.getElementById("form_article").reset();
+                document.getElementById("whatsapp_article").value = vendeurConnecte.whatsapp || "";
+                photosArticleSelectionnees = [];
+                document.getElementById("apercu_photos").innerHTML = "";
+                chargerMesArticles();
+            } catch(err) {
+                document.getElementById("msg_article_err").textContent = "❌ Erreur lors de la publication.";
+                document.getElementById("msg_article_err").style.display = "block";
+                console.error(err);
+            }
+            btn.textContent = "📦 Publier l'article"; btn.disabled = false;
+        };
+
+    </script>
+
+</body>
+</html>

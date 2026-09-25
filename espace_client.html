@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="espace_client.css">
+    <title>Espace Client</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <style>
+        /* GRILLE ARTICLES
+           Téléphone : 2 par ligne | Tablette : 3 par ligne | PC (>= 1024px) : 4 par ligne
+           Chaque article est sa propre carte ; elles sont posées directement
+           sur le fond de la page, sans conteneur englobant commun. */
+        .grille-articles {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+            margin-top: 20px;
+        }
+
+        @media (min-width: 700px) {
+            .grille-articles {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 20px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .grille-articles {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 22px;
+            }
+        }
+
+        .carte-article {
+            background: white;
+            border-radius: 14px;
+            border: 1px solid #ece5df;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            min-width: 0;
+        }
+
+        .carte-article:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 22px rgba(0,0,0,0.14);
+        }
+
+        .carte-article img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            background: #f0f0f0;
+            display: block;
+        }
+
+        .carte-article .no-photo {
+            width: 100%;
+            height: 150px;
+            background: linear-gradient(135deg, #f5f5f5, #e0e0e0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 38px;
+        }
+
+        .carte-info {
+            padding: 14px;
+        }
+
+        .carte-categorie {
+            font-size: 10.5px;
+            font-weight: bold;
+            color: #ff5e00;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 5px;
+        }
+
+        .carte-nom {
+            font-size: 15px;
+            font-weight: bold;
+            color: #222;
+            margin-bottom: 5px;
+            line-height: 1.3;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .carte-desc {
+            font-size: 12.5px;
+            color: #666;
+            line-height: 1.45;
+            margin-bottom: 9px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .carte-prix {
+            font-size: 16px;
+            font-weight: bold;
+            color: #8b2d00;
+            margin-bottom: 10px;
+        }
+
+        .carte-btn {
+            display: block;
+            width: 100%;
+            background: #25D366;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            line-height: 1.3;
+        }
+
+        .carte-btn:hover {
+            background: #1da851;
+        }
+
+        /* Petits téléphones : les cartes restent bien lisibles, juste un peu resserrées */
+        @media (max-width: 380px) {
+            .grille-articles { gap: 12px; }
+            .carte-article img,
+            .carte-article .no-photo { height: 120px; }
+            .carte-info { padding: 10px; }
+            .carte-nom { font-size: 13.5px; }
+            .carte-desc { font-size: 11.5px; }
+            .carte-prix { font-size: 14px; }
+        }
+
+        /* CHARGEMENT */
+        .chargement {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+            font-size: 16px;
+        }
+
+        /* BADGE NOMBRE DE PHOTOS */
+        .carte-image {
+            position: relative;
+        }
+
+        .badge-photos {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            background: rgba(0,0,0,0.65);
+            color: #fff;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 999px;
+        }
+
+        /* GALERIE PLEIN ÉCRAN */
+        .galerie-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            background: rgba(10,8,6,0.92);
+            padding: 24px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .galerie-overlay.ouverte {
+            display: flex;
+        }
+
+        .galerie-boite {
+            width: 100%;
+            max-width: 720px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .galerie-haut {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fff;
+        }
+
+        .galerie-titre {
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        .galerie-fermer {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .galerie-cadre {
+            position: relative;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .galerie-cadre img {
+            max-width: 100%;
+            max-height: 62vh;
+            border-radius: 10px;
+            background: #150e0a;
+            object-fit: contain;
+        }
+
+        .galerie-fleche {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.14);
+            color: #fff;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .galerie-precedent { left: -6px; }
+        .galerie-suivant { right: -6px; }
+
+        .galerie-miniatures {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .galerie-miniatures img {
+            width: 54px;
+            height: 54px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            opacity: 0.65;
+        }
+
+        .galerie-miniatures img.active {
+            border-color: #ff5e00;
+            opacity: 1;
+        }
+
+        /* AUCUN ARTICLE */
+        .aucun-article {
+            text-align: center;
+            padding: 50px 20px;
+            color: #888;
+        }
+
+        .aucun-article p {
+            font-size: 16px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="site-nav">
+        <div class="nav-haut">
+            <a href="index.html" class="nav-logo">
+                <img src="logo.png" alt="ESETEC Marketplace">
+                <span>ESETEC <em>Marketplace</em></span>
+            </a>
+            <ul class="menu">
+                <li><a href="index.html">Accueil</a></li>
+                <li><a href="espace_client.html">Espace Client</a></li>
+                <li><a href="espace_vendeur.html" id="nav_espace_vendeur">Espace Vendeur</a></li>
+                <li><a href="admin.html">Espace Admin</a></li>
+            </ul>
+        </div>
+        <div class="nav-recherche">
+            <form onsubmit="return false;">
+                <input
+                    type="text"
+                    id="input_recherche"
+                    placeholder="Rechercher un article..."
+                    oninput="filtrerArticles()"
+                >
+                <select id="select_categorie" onchange="filtrerArticles()">
+                    <option value="">Toutes catégories</option>
+                    <option value="Vêtements">Vêtements</option>
+                    <option value="Accessoires">Accessoires</option>
+                    <option value="Informatique">Informatique</option>
+                    <option value="Fournitures">Fournitures scolaires</option>
+                    <option value="Alimentation">Alimentation</option>
+                    <option value="Électronique">Électronique</option>
+                    <option value="Autre">Autre</option>
+                </select>
+                <button type="button" onclick="filtrerArticles()">Rechercher</button>
+            </form>
+        </div>
+    </nav>
+
+    <main>
+
+        <!-- ARTICLES -->
+        <section id="articles">
+            <div class="articles-entete">
+                <h2>Articles disponibles</h2>
+                <div id="compteur"></div>
+            </div>
+            <div class="grille-articles" id="grille-articles">
+                <div class="chargement">⏳ Chargement des articles...</div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- GALERIE PHOTOS PLEIN ÉCRAN -->
+    <div class="galerie-overlay" id="galerie_overlay" onclick="if(event.target===this) fermerGalerie()">
+        <div class="galerie-boite">
+            <div class="galerie-haut">
+                <span class="galerie-titre" id="galerie_titre"></span>
+                <button type="button" class="galerie-fermer" onclick="fermerGalerie()" aria-label="Fermer">✕</button>
+            </div>
+            <div class="galerie-cadre">
+                <button type="button" class="galerie-fleche galerie-precedent" onclick="naviguerGalerie(-1)" aria-label="Photo précédente">‹</button>
+                <img id="galerie_image_active" src="" alt="">
+                <button type="button" class="galerie-fleche galerie-suivant" onclick="naviguerGalerie(1)" aria-label="Photo suivante">›</button>
+            </div>
+            <div class="galerie-miniatures" id="galerie_miniatures"></div>
+        </div>
+    </div>
+
+    <footer class="footer-site">
+        <div class="footer-conteneu">
+            <div class="footer-colonne footer-marque">
+                <h3>ESETEC <span>Marketplace</span></h3>
+                <p>La marketplace des étudiants de ESETEC : achetez et vendez facilement entre vous, en toute simplicité.</p>
+            </div>
+
+            <div class="footer-colonne">
+                <h4>Navigation</h4>
+                <ul>
+                    <li><a href="index.html">Accueil</a></li>
+                    <li><a href="espace_client.html">Espace Client</a></li>
+                    <li><a href="espace_vendeur.html">Espace Vendeur</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-colonne">
+                <h4>À propos</h4>
+                <ul>
+                    <li> Réservé à la communauté ESETEC</li>
+                    <li> Contact vendeur via WhatsApp</li>
+                    <li>🇨🇮 Côte d'Ivoire</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bas">
+            <p>© <span id="annee-courante"></span> ESETEC Marketplace — Tous droits réservés</p>
+        </div>
+
+        <script>
+            document.getElementById("annee-courante").textContent = new Date().getFullYear();
+        </script>
+    </footer>
+
+    <!-- FIREBASE SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD0AD4E1t_YuQLHOgsEOy_wQKZ4l9ycrMo",
+            authDomain: "esetec-marketplace.firebaseapp.com",
+            projectId: "esetec-marketplace",
+            storageBucket: "esetec-marketplace.firebasestorage.app",
+            messagingSenderId: "480104714016",
+            appId: "1:480104714016:web:c8b923f80c103701385145",
+            databaseURL: "https://esetec-marketplace-default-rtdb.firebaseio.com"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db  = getDatabase(app);
+
+        // Stocke tous les articles pour la recherche
+        var tousLesArticles = [];
+
+        // Écoute les articles en temps réel
+        var articlesRef = ref(db, "articles");
+
+        onValue(articlesRef, function(snapshot) {
+            tousLesArticles = [];
+
+            if (snapshot.exists()) {
+                snapshot.forEach(function(enfant) {
+                    var article = enfant.val();
+                    article.id = enfant.key;
+                    tousLesArticles.push(article);
+                });
+                // Trier du plus récent au plus ancien
+                tousLesArticles.reverse();
+            }
+
+            if (appliquerCategorieDepuisURL()) {
+                filtrerArticles();
+            } else {
+                afficherArticles(tousLesArticles);
+            }
+        });
+
+        // Pré-sélectionne la catégorie si elle est passée dans l'URL (ex: ?categorie=Informatique)
+        function appliquerCategorieDepuisURL() {
+            var params = new URLSearchParams(window.location.search);
+            var categorie = params.get("categorie");
+            if (categorie) {
+                document.getElementById("select_categorie").value = categorie;
+                return true;
+            }
+            return false;
+        }
+
+        // Afficher les articles dans la grille
+        function afficherArticles(articles) {
+            var grille = document.getElementById("grille-articles");
+            var compteur = document.getElementById("compteur");
+
+            if (articles.length === 0) {
+                grille.innerHTML =
+                    "<div class='aucun-article' style='grid-column:1/-1;'>" +
+                    "<div style='font-size:48px;'>🛒</div>" +
+                    "<p>Aucun article disponible pour le moment.<br>" +
+                    "Revenez bientôt !</p></div>";
+                compteur.textContent = "";
+                return;
+            }
+
+            compteur.textContent = articles.length + " article(s) trouvé(s)";
+            grille.innerHTML = "";
+
+            articles.forEach(function(article) {
+                var carte = document.createElement("div");
+                carte.className = "carte-article";
+
+                var photos = (article.photos && article.photos.length) ? article.photos : (article.photo ? [article.photo] : []);
+                var photoPrincipale = photos[0];
+
+                var photoHTML = photoPrincipale
+                    ? "<div class='carte-image'><img src='" + photoPrincipale + "' alt='" + article.nom + "'>" +
+                      (photos.length > 1 ? "<span class='badge-photos'>📷 " + photos.length + "</span>" : "") +
+                      "</div>"
+                    : "<div class='no-photo'>📦</div>";
+
+                var prixFormate = article.prix
+                    ? parseInt(article.prix).toLocaleString("fr-FR") + " FCFA"
+                    : "Prix non défini";
+
+                var msgWhatsApp =
+                    "Bonjour, je suis intéressé(e) par votre article *" + article.nom +
+                    "* affiché sur ESETEC Marketplace. Est-il encore disponible ?";
+
+                var lienWhatsApp = "https://api.whatsapp.com/send?phone=" +
+                    article.whatsapp.replace(/[^0-9]/g, "") +
+                    "&text=" + encodeURIComponent(msgWhatsApp);
+
+                carte.innerHTML =
+                    photoHTML +
+                    "<div class='carte-info'>" +
+                    "<div class='carte-categorie'>" + (article.categorie || "Autre") + "</div>" +
+                    "<div class='carte-nom'>" + article.nom + "</div>" +
+                    "<div class='carte-desc'>" + (article.description || "") + "</div>" +
+                    "<div class='carte-prix'>" + prixFormate + "</div>" +
+                    "<a href='" + lienWhatsApp + "' target='_blank' class='carte-btn'>" +
+                    " Contacter le vendeur</a>" +
+                    "</div>";
+
+                grille.appendChild(carte);
+
+                if (photos.length > 0) {
+                    var zoneImage = carte.querySelector(".carte-image, .no-photo");
+                    zoneImage.style.cursor = "pointer";
+                    zoneImage.addEventListener("click", function() {
+                        ouvrirGalerie(photos, article.nom);
+                    });
+                }
+            });
+        }
+
+        // ══════════════════════════════════════
+        // GALERIE PHOTOS PLEIN ÉCRAN
+        // ══════════════════════════════════════
+        var galeriePhotosActuelles = [];
+        var galerieIndexActuel = 0;
+
+        window.ouvrirGalerie = function(photos, nomArticle) {
+            galeriePhotosActuelles = photos;
+            galerieIndexActuel = 0;
+            document.getElementById("galerie_titre").textContent = nomArticle;
+            afficherPhotoGalerie();
+            document.getElementById("galerie_overlay").classList.add("ouverte");
+        };
+
+        window.fermerGalerie = function() {
+            document.getElementById("galerie_overlay").classList.remove("ouverte");
+        };
+
+        window.naviguerGalerie = function(delta) {
+            var total = galeriePhotosActuelles.length;
+            galerieIndexActuel = (galerieIndexActuel + delta + total) % total;
+            afficherPhotoGalerie();
+        };
+
+        function afficherPhotoGalerie() {
+            document.getElementById("galerie_image_active").src = galeriePhotosActuelles[galerieIndexActuel];
+
+            var miniatures = document.getElementById("galerie_miniatures");
+            miniatures.innerHTML = "";
+            miniatures.style.display = galeriePhotosActuelles.length > 1 ? "flex" : "none";
+
+            galeriePhotosActuelles.forEach(function(src, index) {
+                var mini = document.createElement("img");
+                mini.src = src;
+                mini.className = index === galerieIndexActuel ? "active" : "";
+                mini.onclick = function() { galerieIndexActuel = index; afficherPhotoGalerie(); };
+                miniatures.appendChild(mini);
+            });
+        }
+
+        document.addEventListener("keydown", function(e) {
+            if (!document.getElementById("galerie_overlay").classList.contains("ouverte")) return;
+            if (e.key === "Escape") fermerGalerie();
+            if (e.key === "ArrowLeft") naviguerGalerie(-1);
+            if (e.key === "ArrowRight") naviguerGalerie(1);
+        });
+
+        // Filtrer par nom et catégorie
+        window.filtrerArticles = function() {
+            var recherche  = document.getElementById("input_recherche").value.toLowerCase();
+            var categorie  = document.getElementById("select_categorie").value;
+
+            var filtres = tousLesArticles.filter(function(a) {
+                var nomOk = a.nom.toLowerCase().includes(recherche) ||
+                            (a.description || "").toLowerCase().includes(recherche);
+                var catOk = !categorie || a.categorie === categorie;
+                return nomOk && catOk;
+            });
+
+            afficherArticles(filtres);
+        };
+
+    </script>
+
+    <!-- BASCULE "MON COMPTE" DANS LA BARRE DE NAVIGATION -->
+    <script>
+        (function () {
+            try {
+                var connecte = localStorage.getItem("esetec_vendeur_id");
+                var lien = document.getElementById("nav_espace_vendeur");
+                if (connecte && lien) {
+                    lien.textContent = " Mon compte";
+                    lien.classList.add("nav-mon-compte");
+                }
+            } catch (e) {}
+        })();
+    </script>
+
+</body>
+</html>
